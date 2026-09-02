@@ -132,5 +132,5 @@ In case you want to tryout how to generate the OKF bundle by yourself. You can e
 uv tool install git+https://github.com/GoogleCloudPlatform/open-knowledge-format
 
 GOOGLE_GENAI_USE_VERTEXAI=True GOOGLE_CLOUD_PROJECT=$PROJECT GOOGLE_CLOUD_LOCATION=global \
-reference-agent enrich --source bq --dataset $PROJECT.marketplace --out bundles/generated --no-web
+reference-agent enrich --source bq --dataset $PROJECT_ID.marketplace --out bundles/generated --no-web
 ```
