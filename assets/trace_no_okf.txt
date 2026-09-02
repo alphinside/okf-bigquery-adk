@@ -1,0 +1,83 @@
+$ mkdir -p /tmp/okf_empty && OKF_BUNDLE=/tmp/okf_empty adk run agent
+# An empty bundle directory: read_okf_concept always errors, so the agent has
+# only the BigQuery MCP server's schema introspection. No knowledge layer at all.
+[user]: What was total GMV for successful QRIS payments in Jabodetabek in July 2026?
+
+[marketplace_analytics_agent]: The total GMV for successful QRIS payments in Jabodetabek for orders placed in **July 2026** was **IDR 329,590,000** across **132 orders**.
+
+---
+
+### Concepts Relied On
+
+1. **Gross Merchandise Value (GMV)**:
+   - Aggregation: `SUM(orders.gross_amount)`
+2. **Successful QRIS Payments**:
+   - Payment method filter: `payments.payment_method = 'qris'`
+   - Gateway status: `payments.transaction_status = 'settlement'` (status code `200` with settled timestamp)
+3. **Geography (Jabodetabek)**:
+   - Greater Jakarta metropolitan area destination cities/regencies:
+     - **Jakarta**: `Kota Jakarta Pusat`, `Kota Jakarta Utara`, `Kota Jakarta Barat`, `Kota Jakarta Selatan`, `Kota Jakarta Timur`
+     - **Bogor**: `Kota Bogor`, `Kab. Bogor`
+     - **Depok**: `Kota Depok`
+     - **Tangerang**: `Kota Tangerang`, `Kota Tangerang Selatan`, `Kab. Tangerang`
+     - **Bekasi**: `Kota Bekasi`, `Kab. Bekasi`
+4. **Time Period**:
+   - Order timestamp: `orders.order_ts >= '2026-07-01 00:00:00'` and `orders.order_ts < '2026-08-01 00:00:00'`
+
+---
+
+### SQL Query Executed
+
+```sql
+SELECT 
+  COUNT(o.order_id) AS total_orders,
+  SUM(o.gross_amount) AS total_gmv_idr
+FROM `alvin-exploratory-2.marketplace.orders` AS o
+JOIN `alvin-exploratory-2.marketplace.payments` AS p
+  ON o.order_id = p.order_id
+WHERE p.payment_method = 'qris'
+  AND p.transaction_status = 'settlement'
+  AND o.destination_city IN (
+    'Kota Jakarta Pusat',
+    'Kota Jakarta Utara',
+    'Kota Jakarta Barat',
+    'Kota Jakarta Selatan',
+    'Kota Jakarta Timur',
+    'Kota Bogor',
+    'Kab. Bogor',
+    'Kota Depok',
+    'Kota Tangerang',
+    'Kota Tangerang Selatan',
+    'Kab. Tangerang',
+    'Kota Bekasi',
+    'Kab. Bekasi'
+  )
+  AND o.order_ts >= '2026-07-01 00:00:00'
+  AND o.order_ts < '2026-08-01 00:00:00'
+```
+
+---
+
+### City-Level Breakdown
+
+| Destination City | Order Count | Total GMV (IDR) |
+| :--- | :--- | :--- |
+| **Kota Bogor** | 12 | 42,806,000 |
+| **Kota Tangerang Selatan** | 10 | 40,504,000 |
+| **Kota Jakarta Pusat** | 15 | 36,436,000 |
+| **Kab. Bogor** | 14 | 31,777,000 |
+| **Kota Jakarta Timur** | 11 | 23,912,000 |
+| **Kota Tangerang** | 11 | 23,275,000 |
+| **Kota Bekasi** | 9 | 23,072,000 |
+| **Kab. Tangerang** | 9 | 20,342,000 |
+| **Kota Jakarta Barat** | 10 | 18,805,000 |
+| **Kota Depok** | 8 | 17,946,000 |
+| **Kab. Bekasi** | 7 | 17,595,000 |
+| **Kota Jakarta Selatan** | 9 | 17,580,000 |
+| **Kota Jakarta Utara** | 7 | 15,540,000 |
+| **Total** | **132** | **329,590,000** |
+
+--- captured 2026-09-01 · google-adk 2.8.0 · gemini-3.7-flash · ADK experimental-feature
+--- UserWarnings stripped; the model's output is verbatim.
+--- Three runs of this configuration returned IDR 371,251,000 / 333,020,000 /
+--- 371,886,000. Expect a different wrong number each time, not this one.

@@ -1,0 +1,50 @@
+$ OKF_BUNDLE=bundles/marketplace adk run agent
+[user]: What was total GMV for successful QRIS payments in Jabodetabek in July 2026?
+
+[marketplace_analytics_agent]: The total GMV for successful QRIS payments in Jabodetabek in July 2026 was **IDR 286,740,000** (286.74 million IDR).
+
+---
+
+### Concepts Relied On
+- **[Gross Merchandise Value (GMV)](metrics/gmv.md):** Defines GMV as `SUM(orders.gross_amount)` where `payments.transaction_status = 'settlement'` and `orders.order_status = 'completed'`. Requires cutting the time period on `payments.settlement_ts` using a half-open interval with explicit UTC+7 offset (`>= TIMESTAMP('2026-07-01 00:00:00+07') AND < TIMESTAMP('2026-08-01 00:00:00+07')`).
+- **[Jabodetabek Reference](references/jabodetabek.md):** Defines the regional boundary by expanding into the 13 exact `orders.destination_city` values for Jakarta, Bogor, Depok, Tangerang, and Bekasi (both cities and regencies).
+- **[Payments Table](tables/payments.md):** Defines payment methods (including `'qris'`) and the join condition on `order_id`.
+- **[Orders Table](tables/orders.md):** Defines order statuses and gross amount field.
+
+---
+
+### SQL Query Executed
+
+```sql
+SELECT
+  SUM(o.gross_amount) AS total_gmv_idr
+FROM
+  `alvin-exploratory-2.marketplace.orders` AS o
+JOIN
+  `alvin-exploratory-2.marketplace.payments` AS p
+  ON o.order_id = p.order_id
+WHERE
+  p.transaction_status = 'settlement'
+  AND o.order_status = 'completed'
+  AND p.payment_method = 'qris'
+  AND o.destination_city IN (
+    'Kota Jakarta Pusat',
+    'Kota Jakarta Utara',
+    'Kota Jakarta Barat',
+    'Kota Jakarta Selatan',
+    'Kota Jakarta Timur',
+    'Kota Bogor',
+    'Kab. Bogor',
+    'Kota Depok',
+    'Kota Tangerang',
+    'Kota Tangerang Selatan',
+    'Kab. Tangerang',
+    'Kota Bekasi',
+    'Kab. Bekasi'
+  )
+  AND p.settlement_ts >= TIMESTAMP('2026-07-01 00:00:00+07')
+  AND p.settlement_ts < TIMESTAMP('2026-08-01 00:00:00+07');
+```
+
+--- captured 2026-09-01 · google-adk 2.8.0 · gemini-3.7-flash
+--- ADK experimental-feature UserWarnings stripped; model output verbatim.

@@ -4,8 +4,9 @@
 !.env.example
 *-key.json
 service-account*.json
+credentials.json
 
-# Python (the context names Python 3.11+ and google-adk)
+# Python
 __pycache__/
 *.py[cod]
 .venv/

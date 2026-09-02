@@ -1,0 +1,59 @@
+$ OKF_BUNDLE=bundles/generated adk run agent
+[user]: What was total GMV for successful QRIS payments in Jabodetabek in July 2026?
+
+[marketplace_analytics_agent]: ### Result
+
+The total GMV for successful QRIS payments in Jabodetabek in July 2026 was **IDR 329,590,000** across **132 orders** (based on order placement timestamp `order_ts` in July 2026).
+
+*(If measured by payment settlement timestamp `settlement_ts` occurring in July 2026, the total GMV is **IDR 328,612,000** across **131 orders**).*
+
+---
+
+### Concepts Relied On
+
+1. **`tables/orders.md`**:
+   - `order_id`: Unique identifier to join with `payments`.
+   - `gross_amount`: Total gross order value (GMV) in IDR.
+   - `order_ts`: Timestamp when the order was placed.
+   - `destination_city`: Geographic destination covering the Jabodetabek metropolitan area (`Kota Jakarta Barat`, `Kota Jakarta Pusat`, `Kota Jakarta Selatan`, `Kota Jakarta Timur`, `Kota Jakarta Utara`, `Kab. Bogor`, `Kota Bogor`, `Kota Depok`, `Kab. Tangerang`, `Kota Tangerang`, `Kota Tangerang Selatan`, `Kab. Bekasi`, `Kota Bekasi`).
+2. **`tables/payments.md`**:
+   - `payment_method`: Filtered on `'qris'`.
+   - `transaction_status`: Filtered on `'settlement'` (representing successful payments).
+   - `settlement_ts`: Gateway settlement timestamp.
+3. **`datasets/marketplace.md`**:
+   - Metadata and schema definitions linking `orders` and `payments` tables.
+
+---
+
+### SQL Query
+
+```sql
+SELECT
+  COUNT(o.order_id) AS total_orders,
+  SUM(o.gross_amount) AS total_gmv_idr
+FROM `alvin-exploratory-2.marketplace.orders` AS o
+JOIN `alvin-exploratory-2.marketplace.payments` AS p
+  ON o.order_id = p.order_id
+WHERE p.payment_method = 'qris'
+  AND p.transaction_status = 'settlement'
+  AND o.destination_city IN (
+    'Kab. Bekasi',
+    'Kab. Bogor',
+    'Kab. Tangerang',
+    'Kota Bekasi',
+    'Kota Bogor',
+    'Kota Depok',
+    'Kota Jakarta Barat',
+    'Kota Jakarta Pusat',
+    'Kota Jakarta Selatan',
+    'Kota Jakarta Timur',
+    'Kota Jakarta Utara',
+    'Kota Tangerang',
+    'Kota Tangerang Selatan'
+  )
+  AND o.order_ts >= '2026-07-01'
+  AND o.order_ts < '2026-08-01';
+```
+
+--- captured 2026-09-01 · google-adk 2.8.0 · gemini-3.7-flash · ADK experimental-feature
+--- UserWarnings stripped; the model's output is verbatim.

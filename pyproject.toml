@@ -1,0 +1,30 @@
+[project]
+name = "okf-marketplace-agent"
+version = "0.1.0"
+description = "An ADK agent that answers marketplace questions over BigQuery, grounded in an Open Knowledge Format bundle."
+requires-python = ">=3.11"
+
+# There is no google-cloud-bigquery here, on purpose. The agent never calls the
+# BigQuery API directly. Every query goes through the BigQuery MCP server, so the
+# agent needs no client library and no credential setup of its own.
+#
+# google-adk is pinned because this repository backs published material and must
+# still run months from now. We built and ran everything against 2.8.0. The agent
+# needs `header_provider` on McpToolset, which exists in 1.20.0 and later.
+#
+# The [mcp] extra is required. Plain `google-adk` does not install the `mcp`
+# package. The file google/adk/tools/mcp_tool/__init__.py wraps its imports in a
+# try/except ImportError, so McpToolset never reaches __all__. You then get
+# "cannot import name 'McpToolset'" with no hint that an extra is missing.
+dependencies = [
+  "google-adk[mcp]==2.8.0",
+  "google-auth>=2.40.0",
+]
+
+# reference-agent (Act 1) is not a dependency here. It installs
+# google-cloud-bigquery. Keeping that package out of this environment is what
+# makes the claim above testable with `uv pip list`. Install it on its own:
+#   uv tool install git+https://github.com/GoogleCloudPlatform/open-knowledge-format
+
+[tool.uv]
+package = false
