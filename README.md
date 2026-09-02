@@ -80,7 +80,7 @@ We can utilize the `reference-agent enrich` command to initialize the OKF bundle
 |---|---|---|
 | Python | 3.11 or later | We used 3.13. The reference agent also needs 3.11 or later. |
 | [uv](https://docs.astral.sh/uv/) | any recent | `pip` also works. Read [pyproject.toml](pyproject.toml) for the list of packages. |
-| `google-adk` | pinned to `2.8.0`, with the `[mcp]` extra | Plain `google-adk` has no MCP support and fails with a confusing `ImportError`. Read [Failure modes](#failure-modes). |
+| `google-adk` | pinned to `2.8.0`, with the `[mcp]` extra | Plain `google-adk` has no MCP support and fails with a confusing `ImportError`. |
 | `gcloud` and `bq` | any recent | For login and for loading the data. |
 | Google Cloud project | — | Enable the BigQuery API. That step alone turns on the BigQuery MCP server. |
 | IAM roles | — | `roles/mcp.toolUser`, `roles/bigquery.jobUser`, `roles/bigquery.dataViewer` |
