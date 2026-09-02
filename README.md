@@ -100,23 +100,23 @@ That one login covers the model and the BigQuery MCP server. To use a Gemini API
 ## Run
 
 ```bash
-export PROJECT=$(grep GOOGLE_CLOUD_PROJECT .env | cut -d= -f2)
+export PROJECT_ID=$(grep GOOGLE_CLOUD_PROJECT .env | cut -d= -f2)
 
 # 1. Create the dataset and tables.
-bq --project_id=$PROJECT query --use_legacy_sql=false < seed/schema.sql
+bq --project_id=$PROJECT_ID query --use_legacy_sql=false < seed/schema.sql
 
 # 2. Load 2,000 rows.
-bq --project_id=$PROJECT query --use_legacy_sql=false < seed/seed_data.sql
+bq --project_id=$PROJECT_ID query --use_legacy_sql=false < seed/seed_data.sql
 
 # 3. Every row must read PASS.
-bq --project_id=$PROJECT query --use_legacy_sql=false < seed/verify.sql
+bq --project_id=$PROJECT_ID query --use_legacy_sql=false < seed/verify.sql
 
 # 4. Ask the same question against each bundle.
-OKF_BUNDLE=bundles/generated   uv run adk run agent
-OKF_BUNDLE=bundles/marketplace uv run adk run agent
+OKF_BUNDLE=bundles/generated   uv run adk web
+OKF_BUNDLE=bundles/marketplace uv run adk web
 ```
 
-Two more questions, with their correct answers, are in [eval/questions.md](eval/questions.md).
+You can play with more questions, with their correct answers in [eval/questions.md](eval/questions.md).
 
 For the first level in the diagram, point `OKF_BUNDLE` at an empty directory. The reader tool then fails on every call and the agent falls back to the schema.
 
@@ -126,7 +126,7 @@ mkdir -p /tmp/okf_empty && OKF_BUNDLE=/tmp/okf_empty uv run adk run agent
 
 ### Optional: build the generated bundle yourself
 
-Already committed, so you never have to run this. It is here so the claim is testable rather than trusted.
+In case you want to tryout how to generate the OKF bundle by yourself. You can execute the following command
 
 ```bash
 uv tool install git+https://github.com/GoogleCloudPlatform/open-knowledge-format
@@ -134,83 +134,3 @@ uv tool install git+https://github.com/GoogleCloudPlatform/open-knowledge-format
 GOOGLE_GENAI_USE_VERTEXAI=True GOOGLE_CLOUD_PROJECT=$PROJECT GOOGLE_CLOUD_LOCATION=global \
 reference-agent enrich --source bq --dataset $PROJECT.marketplace --out bundles/generated --no-web
 ```
-
-`reference-agent` goes in as a separate tool because it depends on `google-cloud-bigquery`. Keeping that out of the agent environment is what makes "the agent never calls the BigQuery API" checkable with `uv pip list`.
-
-A rerun does not produce identical files. A model writes this Markdown, so wording and example queries drift. Expect a dirty `git status`.
-
-## How you know it worked
-
-`seed/verify.sql` reads `PASS` on every row, the two bundles disagree, and only `bundles/marketplace` returns IDR 286,740,000 across 119 orders while naming `metrics/gmv.md` and `references/jabodetabek.md`. If both bundles agree, the demo is broken. Start at `seed/verify.sql`.
-
-The wrong answers move between runs, so do not treat any one of them as expected output. Only `bundles/marketplace` was identical every time.
-
-## Layout
-
-```text
-seed/
-  schema.sql        two tables; the column descriptions stay structural on purpose
-  seed_data.sql     2,000 rows built from a fixed hash, with the hard cases designed in
-  verify.sql        proves the hard cases survived
-bundles/
-  generated/        Act 1: the untouched output of reference-agent enrich
-    datasets/       type: BigQuery Dataset
-    tables/         type: BigQuery Table
-  marketplace/      the same generated files, plus:
-    metrics/gmv.md             Act 2, hand-written, type: Metric
-    references/jabodetabek.md  Act 2, hand-written, type: Reference
-agent/
-  agent.py          root_agent: a short OKF reader tool, and configuration
-eval/
-  questions.md      three questions with their correct answers
-  ground_truth.sql  reproduces every figure quoted in questions.md
-assets/
-  trace_no_okf.txt  the run with no knowledge layer
-  trace_before.txt  the run against bundles/generated
-  trace_after.txt   the run against bundles/marketplace
-```
-
-You can tell the halves apart from inside a bundle too. A generated document carries `generated: {by: reference_agent/...}` and no `verified` entry, so OKF rates it `unverified`. Hand-written ones carry `verified` and `stale_after`.
-
-## Failure modes
-
-### `ImportError: cannot import name 'McpToolset'`
-
-`google-adk` installed without the `[mcp]` extra. ADK wraps those imports in a `try/except ImportError` that logs at DEBUG only, so the name just disappears. Install `google-adk[mcp]`.
-
-### `DefaultCredentialsError` on startup
-
-`agent/agent.py` calls `google.auth.default()` at import time, so this fires before the agent runs. Run `gcloud auth application-default login`.
-
-### HTTP 403 from the MCP server
-
-`roles/mcp.toolUser` is missing. The two BigQuery roles are not enough on their own.
-
-The server answers `tools/list` without credentials, which is a quick way to rule it out:
-
-```bash
-curl -s -X POST https://bigquery.googleapis.com/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-```
-
-### No network
-
-Nothing runs. Model, MCP server and BigQuery are all remote. No offline mode, no recorded fixture.
-
-### No billing account
-
-Untested. The sandbox handles 2,000 rows and the MCP server adds no charge, but model calls here go through Gemini Enterprise Agent Platform and we never tried that without billing.
-
-## Notes
-
-Versions are pinned because this backs published material and has to still run later.
-
-`tool_filter` omits `execute_sql`, leaving the agent five read-only tools. That is configuration, not a security boundary: it does not limit the credential. An IAM deny policy on `execute_sql` is the boundary that holds.
-
-The MCP server caps results at 3,000 rows and kills queries at three minutes. The agent is told to always aggregate, so neither limit bites here.
-
-Seed data is synthetic, with no company, merchant or customer names. City names are public geography. The payment status values match a real gateway's public API, unnamed here.
-
-OKF conventions and any quoted text belong to Google under Apache-2.0.
